@@ -53,47 +53,45 @@ def run_ytdlp(url, extra_args):
 
     cookies_path = ensure_cookies_file()
 
-    for strategy in STRATEGIES:
-        try:
-            cmd = ["yt-dlp", url] + BASE_ARGS
+    FORMATS = [
+        ["-f", "bestaudio/best"],
+        ["-f", "best"],
+        ["-f", "worst"],
+    ]
 
-            # 🔥 adiciona cookies SOMENTE se existir
-            if cookies_path:
-                cmd += ["--cookies", cookies_path]
+    for fmt in FORMATS:
+        for strategy in STRATEGIES:
+            try:
+                cmd = ["yt-dlp", url] + BASE_ARGS
 
-            cmd += strategy + extra_args
+                if cookies_path:
+                    cmd += ["--cookies", cookies_path]
 
-            print("🚀 CMD:", " ".join(cmd))
+                cmd += strategy + fmt + extra_args
 
-            result = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+                print("🚀 CMD:", " ".join(cmd))
 
-            return result.decode("utf-8")
+                result = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
 
-        except subprocess.CalledProcessError as e:
-            last_error = e
+                return result.decode("utf-8")
 
-            print("❌ ERRO REAL DO YT-DLP:")
-            print(e.output.decode("utf-8", errors="ignore"))
+            except subprocess.CalledProcessError as e:
+                last_error = e
+                print("❌ ERRO YT-DLP:")
+                print(e.output.decode("utf-8", errors="ignore"))
+                print("⚠️ Falhou:", fmt, strategy)
 
-            print("⚠️ Estratégia falhou:", strategy)
+    # fallback final SEM cookies
+    try:
+        cmd = ["yt-dlp", url] + BASE_ARGS + ["-f", "bestaudio/best"] + extra_args
 
-    # 🔥 fallback FINAL sem cookies (caso cookie esteja inválido)
-    if cookies_path:
-        print("⚠️ Tentando fallback SEM cookies...")
+        print("🚀 FALLBACK FINAL:", " ".join(cmd))
 
-        try:
-            cmd = ["yt-dlp", url] + BASE_ARGS + extra_args
+        result = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
 
-            print("🚀 FALLBACK CMD:", " ".join(cmd))
+        return result.decode("utf-8")
 
-            result = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-
-            return result.decode("utf-8")
-
-        except subprocess.CalledProcessError as e:
-            print("❌ ERRO FALLBACK FINAL:")
-            print(e.output.decode("utf-8", errors="ignore"))
-
-            last_error = e
-
-    raise last_error
+    except subprocess.CalledProcessError as e:
+        print("❌ ERRO FINAL:")
+        print(e.output.decode("utf-8", errors="ignore"))
+        raise e
