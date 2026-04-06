@@ -100,28 +100,77 @@ async def stream(url: str, request: Request, _: None = Depends(rate_limit)):
     cache_key = f"stream:{url}"
     audio_url = get_cache(cache_key)
 
+    # 🔥 CACHE MISS
     if not audio_url:
         try:
             result = run_ytdlp(url, ["-f", "bestaudio", "--get-url"])
+
+            # 🔥 parsing seguro (evita string vazia / lixo)
+            audio_url = None
+            for line in result.split("\n"):
+                if line.startswith("http"):
+                    audio_url = line.strip()
+                    break
+
+            if not audio_url:
+                raise Exception("yt-dlp não retornou URL válida")
+
+            set_cache(cache_key, audio_url, STREAM_TTL)
+            print("🔥 CACHE MISS - stream gerado")
+
         except Exception as e:
             raise HTTPException(500, f"Erro ao obter stream: {str(e)}")
-        audio_url = result.split("\n")[0]
-        set_cache(cache_key, audio_url, STREAM_TTL)
 
+    else:
+        print("⚡ CACHE HIT")
+
+    # 🔥 headers de range (player streaming real)
     headers = {}
     if "range" in request.headers:
         headers["Range"] = request.headers["range"]
 
-    r = requests.get(audio_url, stream=True, headers=headers)
+    try:
+        r = requests.get(audio_url, stream=True, headers=headers, timeout=10)
+
+    except Exception:
+        # 🔥 fallback automático se URL expirar
+        print("⚠️ Stream expirou, regenerando...")
+
+        try:
+            result = run_ytdlp(url, ["-f", "bestaudio", "--get-url"])
+
+            audio_url = None
+            for line in result.split("\n"):
+                if line.startswith("http"):
+                    audio_url = line.strip()
+                    break
+
+            if not audio_url:
+                raise Exception("Falha no fallback do stream")
+
+            set_cache(cache_key, audio_url, STREAM_TTL)
+
+            r = requests.get(audio_url, stream=True, headers=headers, timeout=10)
+
+        except Exception as e:
+            raise HTTPException(500, f"Erro ao recuperar stream: {str(e)}")
 
     def gen():
-        for chunk in r.iter_content(8192):
-            yield chunk
+        try:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    yield chunk
+        except Exception as e:
+            print("Erro durante streaming:", e)
 
     from fastapi.responses import StreamingResponse
 
-    res = StreamingResponse(gen(), media_type=r.headers.get("content-type", "audio/webm"))
+    res = StreamingResponse(
+        gen(),
+        media_type=r.headers.get("content-type", "audio/webm")
+    )
 
+    # 🔥 headers importantes para players
     if "content-length" in r.headers:
         res.headers["Content-Length"] = r.headers["content-length"]
 
@@ -131,7 +180,6 @@ async def stream(url: str, request: Request, _: None = Depends(rate_limit)):
     res.headers["Accept-Ranges"] = "bytes"
 
     return res
-
 
 # ================= DOWNLOAD =================
 @router.get("/download")
