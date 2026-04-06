@@ -78,6 +78,21 @@ async def search(data: dict, request: Request, _: None = Depends(rate_limit)):
 
     return tracks
 
+# ================= OFFLINE URL =================
+@router.get("/offline-url")
+async def offline_url(url: str, request: Request, _: None = Depends(rate_limit)):
+    cache_key = f"stream:{url}"
+    audio_url = get_cache(cache_key)
+
+    if not audio_url:
+        result = run_ytdlp(url, ["-f", "bestaudio", "--get-url"])
+        audio_url = result.split("\n")[0]
+        if not audio_url:
+            raise HTTPException(500, "Não foi possível obter URL de áudio")
+        set_cache(cache_key, audio_url, STREAM_TTL)
+
+    return {"audioUrl": audio_url}
+
 
 # ================= STREAM =================
 @router.get("/stream")
