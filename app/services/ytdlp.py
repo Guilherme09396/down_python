@@ -1,15 +1,20 @@
 import subprocess
+import os
+
+COOKIES_PATH = os.getenv("COOKIES_PATH", "/app/cookies.txt")
 
 STRATEGIES = [
+    ["--extractor-args", "youtube:player_client=mweb"],
     ["--extractor-args", "youtube:player_client=ios"],
     ["--extractor-args", "youtube:player_client=android"],
     ["--extractor-args", "youtube:player_client=tv_embedded"],
+    ["--extractor-args", "youtube:player_client=web"],
 ]
 
 BASE_ARGS = [
     "--no-warnings",
     "--no-check-certificate",
-    "--cookies", "/app/cookies.txt",
+    "--cookies", COOKIES_PATH,
     "--add-header", "user-agent:Mozilla/5.0",
     "--add-header", "accept-language:en-US,en;q=0.9"
 ]
