@@ -101,7 +101,10 @@ async def stream(url: str, request: Request, _: None = Depends(rate_limit)):
     audio_url = get_cache(cache_key)
 
     if not audio_url:
-        result = run_ytdlp(url, ["-f", "bestaudio", "--get-url"])
+        try:
+            result = run_ytdlp(url, ["-f", "bestaudio", "--get-url"])
+        except Exception as e:
+            raise HTTPException(500, f"Erro ao obter stream: {str(e)}")
         audio_url = result.split("\n")[0]
         set_cache(cache_key, audio_url, STREAM_TTL)
 

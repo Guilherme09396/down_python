@@ -1,11 +1,4 @@
 import subprocess
-from app.core.config import COOKIES_PATH
-
-BASE_ARGS = [
-    "--no-warnings",
-    "--no-check-certificate",
-    "--cookies", COOKIES_PATH
-]
 
 STRATEGIES = [
     ["--extractor-args", "youtube:player_client=ios"],
@@ -13,16 +6,25 @@ STRATEGIES = [
     ["--extractor-args", "youtube:player_client=tv_embedded"],
 ]
 
+BASE_ARGS = [
+    "--no-warnings",
+    "--no-check-certificate",
+    "--cookies", "/app/cookies.txt",
+    "--add-header", "user-agent:Mozilla/5.0",
+    "--add-header", "accept-language:en-US,en;q=0.9"
+]
 
-def run_ytdlp(url, extra=[]):
-    last = None
+def run_ytdlp(url, extra_args):
+    last_error = None
 
-    for s in STRATEGIES:
+    for strategy in STRATEGIES:
         try:
-            cmd = ["yt-dlp", url, *BASE_ARGS, *s, *extra]
-            out = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-            return out.decode().strip()
-        except Exception as e:
-            last = e
+            cmd = ["yt-dlp", url] + BASE_ARGS + strategy + extra_args
+            result = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+            return result.decode("utf-8")
 
-    raise last
+        except subprocess.CalledProcessError as e:
+            last_error = e
+            print("⚠️ Estratégia falhou, tentando próxima...")
+
+    raise last_error

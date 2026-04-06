@@ -10,7 +10,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # instalar yt-dlp
-RUN pip install yt-dlp
+RUN pip install yt-dlp --upgrade --no-cache-dir
 
 COPY . .
 
