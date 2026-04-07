@@ -49,14 +49,25 @@ BASE_ARGS = [
 # RUN YT-DLP (ROBUSTO)
 # =========================
 def run_ytdlp(url, extra_args):
-    last_error = None
-
     cookies_path = ensure_cookies_file()
-
+    
+    # Se extra_args já tem -f, não tente strategies de formato
+    has_format = "-f" in extra_args
+    
+    if has_format:
+        # Roda direto sem tentar múltiplos formatos
+        cmd = ["yt-dlp", url] + BASE_ARGS
+        if cookies_path:
+            cmd += ["--cookies", cookies_path]
+        cmd += extra_args
+        result = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        return result.decode("utf-8")
+    
+    # Se não tem -f, tenta strategies normalmente
     FORMATS = [
         ["-f", "bestaudio/best"],
+        ["-f", "bestaudio"],
         ["-f", "best"],
-        ["-f", "worst"],
     ]
 
     for fmt in FORMATS:

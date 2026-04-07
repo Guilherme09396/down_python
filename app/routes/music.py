@@ -85,7 +85,7 @@ async def offline_url(url: str, request: Request, _: None = Depends(rate_limit))
     audio_url = get_cache(cache_key)
 
     if not audio_url:
-        result = run_ytdlp(url, ["-f", "bestaudio", "--get-url"])
+        result = run_ytdlp(url, ["--get-url"])
         audio_url = result.split("\n")[0]
         if not audio_url:
             raise HTTPException(500, "Não foi possível obter URL de áudio")
@@ -103,7 +103,8 @@ async def stream(url: str, request: Request, _: None = Depends(rate_limit)):
     # 🔥 CACHE MISS
     if not audio_url:
         try:
-            result = run_ytdlp(url, ["-f", "bestaudio", "--get-url"])
+            result = run_ytdlp(url, ["--get-url"])
+
 
             # 🔥 parsing seguro (evita string vazia / lixo)
             audio_url = None

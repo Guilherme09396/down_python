@@ -10,7 +10,7 @@ def stream_audio(url, request):
     audio_url = get_cache(cache_key)
 
     if not audio_url:
-        result = run_ytdlp(url, ["-f", "bestaudio", "--get-url"])
+        result = run_ytdlp(url, ["--get-url"])
         audio_url = result.split("\n")[0]
 
         if not audio_url:
